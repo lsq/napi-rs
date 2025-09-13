@@ -1,0 +1,54 @@
+name: Replace organization name
+description: "A reusable composite action"
+
+inputs:
+  shell:
+    description: "which shell to run command"
+    required: true
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Replace @napi-rs to @bratel
+      shell: ${{ inputs.shell }}
+      env: ${{ matrix.settings.env || fromJSON('{}') }}
+      # working-directory: ${{ matrix.project-folder }}
+      run: |
+        os=$(uname -s | tr '[:upper:]' '[:lower:]')
+        echo $os
+        case "$os" in
+          "linux")
+            sudo apt-get update
+            sudo apt-get install sed ripgrep
+            ;;
+          "mingw"*|"msys"*|"cygwin"*)
+            curl -LO https://github.com/BurntSushi/ripgrep/releases/download/14.1.1/ripgrep-14.1.1-x86_64-pc-windows-msvc.zip
+            7z x ripgrep-14.1.1-x86_64-pc-windows-msvc.zip
+            cd ripgrep-14.1.1-x86_64-pc-windows-msvc
+            ls && cp rg.exe /usr/bin/ && cd ..
+            ;;
+          "darwin")
+            # /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+            # eval "$(/usr/local/bin/brew shellenv)"
+            brew install ripgrep gnu-sed
+            which gsed
+            export PATH="/opt/homebrew/opt/gnu-sed/libexec/gnubin:$PATH"
+            which sed
+            ;;
+          *)
+            echo "Unsupported OS: $os"
+            exit 1
+            ;;
+        esac
+        pwd && ls
+        which rg || exit 1
+        which xargs && which sed
+        # sed -i '2{s/\(rollup\)/@bratel\/\1/};/packageName/{s/@rollup/@bratel/}' package.json
+        # sed -i '/"name": "rollup"/{s/\(rollup\)/@bratel\/\1/}' package-lock.json
+        rg -l --null 'name: .@napi-rs/' ./
+        rg '"name": .@napi-rs/' -l --null ./
+        # rg "name: .@rollup/" -l --null ./ | xargs -0 sed -i "s/\(name: .@\)rollup/\1bratel/"
+        rg '"name": .@napi-rs/' -l --null ./ | xargs -0 sed -i 's/\("name": .@\)napi-rs/\1bratel/'
+        vers=$(sed -n '3{s/.*\([0-9]\+\.[0-9]\+\.[0-9]\+\).*/\1/p}' package.json)
+        echo $vers
+        rg "$vers" -t json --null ./ | xargs -0 echo

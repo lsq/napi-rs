@@ -16,7 +16,7 @@ A framework for building compiled `Node.js` add-ons in `Rust` via Node-API. Webs
 
 ## Platform Support
 
-[![Test & Release](https://github.com/napi-rs/napi-rs/actions/workflows/test-release.yaml/badge.svg)](https://github.com/napi-rs/napi-rs/actions/workflows/test-release.yaml)
+[![Test & Release](https://github.com/lsq/napi-rs/actions/workflows/test-release.yaml/badge.svg)](https://github.com/lsq/napi-rs/actions/workflows/test-release.yaml)
 [![Address Sanitizer](https://github.com/napi-rs/napi-rs/actions/workflows/asan.yml/badge.svg)](https://github.com/napi-rs/napi-rs/actions/workflows/asan.yml)
 [![Memory Leak Detect](https://github.com/napi-rs/napi-rs/actions/workflows/memory-test.yml/badge.svg)](https://github.com/napi-rs/napi-rs/actions/workflows/memory-test.yml)
 
