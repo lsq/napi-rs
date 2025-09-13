@@ -27,6 +27,7 @@ if (platforms.length === 1) {
   }
 } else if (process.platform === 'win32') {
   binaryName = `example.${platforms.find(({ abi }) => abi === 'msvc').platformArchABI}.node`
+    console.log(`now find abi: binaryName: ${binaryName}`)
 } else {
   throw new Error('unsupported platform')
 }
