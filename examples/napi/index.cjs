@@ -109,7 +109,13 @@ function requireNative() {
   } else if (process.platform === 'win32') {
     if (process.arch === 'x64') {
       try {
-        return require('./example.win32-x64-msvc.node')
+        if (process.report.getReport().header.osName.startsWith('MINGW32_NT')) {
+          console.log(`platform is : win32-x64-gnu: MINGW32_NT`)
+          return require('./example.win32-x64-gnu.node')
+        } else {
+          console.log(`platform is : win32-x64-msvc`)
+          return require('./example.win32-x64-msvc.node')
+        }
       } catch (e) {
         loadErrors.push(e)
       }
