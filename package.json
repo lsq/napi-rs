@@ -82,7 +82,7 @@
     "npm-run-all2": "^8.0.0",
     "oxlint": "^1.0.0",
     "prettier": "^3.5.3",
-    "rollup": "^4.38.0",
+    "@bratel/rollup": "^4.50.0-4",
     "shx": "^0.4.0",
     "sinon": "^21.0.0",
     "source-map-support": "^0.5.21",

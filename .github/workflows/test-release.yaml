@@ -788,6 +788,10 @@ jobs:
         with:
           node-version: 22
           cache: 'yarn'
+      - name: Replace release name
+        uses: ./github/actions/replace-org-name
+        with:
+          shell: bash
       - name: Publish
         run: |
           yarn install --mode=skip-build
