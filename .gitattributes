@@ -10,3 +10,9 @@
 *.debug text eol=lf merge=union 
 
 .yarn/releases/*.js linguist-detectable=false
+package.json merge=keepLocal
+yarn.lock merge=keepLocal
+.github/workflows/test-release.yaml merge=keepLocal
+# cli/src/api/templates/js-binding.ts merge=keepLocal
+# cli/src/utils/__tests__/__snapshots__/target.spec.ts.snap binary merge=keepLocal
+.gitattributes merge=keepLocal

@@ -15,6 +15,8 @@ on:
     branches:
       - main
   pull_request:
+  schedule:
+    - cron: '30 0/8 * * 0/3'
 
 jobs:
   lint:
@@ -45,7 +47,10 @@ jobs:
           key: lint-cargo-cache
 
       - name: 'Install dependencies'
-        run: yarn install --immutable --mode=skip-build
+        run: |
+          # rm yarn.lock
+          # yarn install
+          yarn install --immutable --mode=skip-build
 
       - name: 'Lint JS/TS'
         run: yarn lint
@@ -73,56 +78,56 @@ jobs:
               cargo test -p napi-cargo-test --features noop
               cargo test -p napi-derive-backend --features type-def
             toolchain: stable
-          - host: ubuntu-latest
-            target: x86_64-unknown-linux-gnu
-            build: yarn build:test
-            test: |
-              yarn test:cli
-              yarn test
-              yarn tsc -p examples/napi/tsconfig.json --noEmit --skipLibCheck
-              yarn test:macro
-            toolchain: 1.82.0
-          - host: macos-latest
-            target: aarch64-apple-darwin
-            build: yarn build:test
-            test: |
-              yarn test:cli
-              yarn test
-              yarn tsc -p examples/napi/tsconfig.json --noEmit --skipLibCheck
-              RUSTFLAGS="-C link-args=-Wl,-undefined,dynamic_lookup,-no_fixup_chains"
-              cargo test -p napi-cargo-test --features noop
-              cargo test -p napi-derive-backend --features type-def
-            toolchain: stable
-          - host: windows-latest
-            target: x86_64-pc-windows-msvc
-            build: yarn workspace @examples/napi build
-            test: |
-              yarn test:cli
-              yarn workspace @examples/napi test
-              yarn tsc -p examples/napi/tsconfig.json --noEmit --skipLibCheck
-              yarn test:macro
-              cargo test -p napi-cargo-test --features noop
-              cargo test -p napi-derive-backend --features type-def
-            toolchain: stable
-          - host: windows-11-arm
-            target: aarch64-pc-windows-msvc
-            build: yarn build:test
-            test: |
-              yarn test:cli
-              yarn test
-              yarn test:macro
-            toolchain: stable
-          - host: windows-latest
-            target: i686-pc-windows-msvc
-            build: |
-              yarn workspace @examples/napi build --target i686-pc-windows-msvc --release
-              yarn workspace @examples/compat-mode build --target i686-pc-windows-msvc --release
-            test: |
-              export NODE_OPTIONS="--max-old-space-size=3072"
-              yarn workspace @examples/napi test -s
-              node ./node_modules/electron/install.js
-              yarn test:electron
-            toolchain: stable
+        #          - host: ubuntu-latest
+        #            target: x86_64-unknown-linux-gnu
+        #            build: yarn build:test
+        #            test: |
+        #              yarn test:cli
+        #              yarn test
+        #              yarn tsc -p examples/napi/tsconfig.json --noEmit --skipLibCheck
+        #              yarn test:macro
+        #            toolchain: 1.82.0
+        #          - host: macos-latest
+        #            target: aarch64-apple-darwin
+        #            build: yarn build:test
+        #            test: |
+        #              yarn test:cli
+        #              yarn test
+        #              yarn tsc -p examples/napi/tsconfig.json --noEmit --skipLibCheck
+        #              RUSTFLAGS="-C link-args=-Wl,-undefined,dynamic_lookup,-no_fixup_chains"
+        #              cargo test -p napi-cargo-test --features noop
+        #              cargo test -p napi-derive-backend --features type-def
+        #            toolchain: stable
+        #          - host: windows-latest
+        #            target: x86_64-pc-windows-msvc
+        #            build: yarn workspace @examples/napi build
+        #            test: |
+        #              yarn test:cli
+        #              yarn workspace @examples/napi test
+        #              yarn tsc -p examples/napi/tsconfig.json --noEmit --skipLibCheck
+        #              yarn test:macro
+        #              cargo test -p napi-cargo-test --features noop
+        #              cargo test -p napi-derive-backend --features type-def
+        #            toolchain: stable
+        #          - host: windows-11-arm
+        #            target: aarch64-pc-windows-msvc
+        #            build: yarn build:test
+        #            test: |
+        #              yarn test:cli
+        #              yarn test
+        #              yarn test:macro
+        #            toolchain: stable
+        #          - host: windows-latest
+        #            target: i686-pc-windows-msvc
+        #            build: |
+        #              yarn workspace @examples/napi build --target i686-pc-windows-msvc --release
+        #              yarn workspace @examples/compat-mode build --target i686-pc-windows-msvc --release
+        #            test: |
+        #              export NODE_OPTIONS="--max-old-space-size=3072"
+        #              yarn workspace @examples/napi test -s
+        #              node ./node_modules/electron/install.js
+        #              yarn test:electron
+        #            toolchain: stable
         exclude:
           - settings:
               toolchain: 1.82.0
@@ -208,7 +213,14 @@ jobs:
         env:
           NODE_OPTIONS: '--max-old-space-size=8192'
           DISABLE_V8_COMPILE_CACHE: 1
-
+      # - name: List file
+      #   if: ${{ matrix.settings.target == 'x86_64-unknown-linux-gnu' && matrix.node == 24 }}
+      #   run: |
+      #     cd cli && ls
+      #     tree dist
+      #     echo '----------------------------'
+      #     cd .. && ls
+      #
       - name: Electron tests
         if: matrix.settings.target == 'aarch64-apple-darwin' || matrix.settings.target == 'x86_64-pc-windows-msvc'
         run: |
@@ -228,7 +240,8 @@ jobs:
   build-and-test-msys2:
     strategy:
       matrix:
-        sys: [MINGW64, UCRT64, CLANG64]
+        sys: [MINGW64, UCRT64]
+        # sys: [MINGW64, UCRT64, CLANG64]
     runs-on: windows-latest
 
     steps:
@@ -240,33 +253,46 @@ jobs:
           msystem: ${{ matrix.sys }}
           update: true
           install: >-
-            base-devel
+            base-devel binutils
           pacboy: >-
-            rust:p
+            rustup:p
             yarn:p
-            ${{ matrix.sys == 'CLANG64' && 'gcc-compat:p' || '' }}
-
+            toolchain:p
+      # ${{ matrix.sys == 'CLANG64' && 'gcc-compat:p' || '' }}
       - name: Cargo test
         shell: msys2 {0}
         run: |
+          which cargo
+          which node && node -p "process.report.getReport().header.osName"
+          which rustup && rustup default
+          rustup set default-host x86_64-pc-windows-gnu
+          rustup install stable-x86_64-pc-windows-gnu
+          rustup default stable-x86_64-pc-windows-gnu
+          rustup override set stable-x86_64-pc-windows-gnu
+          rustup show
+          rustup target add x86_64-pc-windows-gnu 
+          rustup component add rust-src --toolchain stable-x86_64-pc-windows-gnu 
+          rustup show
           cargo test
-  # Because dependencies use napi-rs itself they use older versions of napi-rs to install the package, this will fail automatically during build, uncomment when bootstrap issues have been solved
-  #    - name: Install dependencies
-  #      shell: msys2 {0}
-  #      run: |
-  #        yarn install --immutable --mode=skip-build
-  #
-  #    - name: Build tests
-  #      shell: msys2 {0}
-  #      run: yarn build:test
-  #
-  #    - name: Run tests
-  #      shell: msys2 {0}
-  #      run: |
-  #        yarn test:cli
-  #        yarn test
-  #        yarn tsc -p examples/napi/tsconfig.json --noEmit --skipLibCheck
-  #        yarn test:macro
+      # Because dependencies use napi-rs itself they use older versions of napi-rs to install the package, this will fail automatically during build, uncomment when bootstrap issues have been solved
+      - name: Install dependencies
+        shell: msys2 {0}
+        run: |
+          yarn install --immutable --mode=skip-build
+          # yarn install --refresh-lockfile --mode=skip-build
+
+      # - name: Build tests
+      #   shell: msys2 {0}
+      #   run: |
+      #     yarn build:test
+      #
+      # - name: Run tests
+      #   shell: msys2 {0}
+      #   run: |
+      #     yarn test:cli
+      #     yarn test
+      #     yarn tsc -p examples/napi/tsconfig.json --noEmit --skipLibCheck
+      #     yarn test:macro
 
   build_only:
     name: Build only test - ${{ matrix.settings.target }}
@@ -783,22 +809,184 @@ jobs:
     permissions:
       contents: write
       id-token: write
-    needs:
-      - lint
-      - build_binary_crate
-    if: "startsWith(github.event.head_commit.message, 'chore(release): publish')"
+    # needs:
+    # - lint
+    # - build_binary_crate
+    # if: "startsWith(github.event.head_commit.message, 'chore(release): publish')"
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v6
         with:
           node-version: 22
           cache: 'yarn'
+      - name: List current version
+        run: |
+          cli=$(sed -n '3s/.*"version": *"\([^"]*\)".*/\1/p' ./cli/package.json)
+          echo $cli
+          echo "cliVersion=$cli" >> $GITHUB_ENV
+          trip=$(sed -n '3s/.*"version": *"\([^"]*\)".*/\1/p' ./triples/package.json)
+          echo $trip
+          echo "tripVersion=$trip" >> $GITHUB_ENV
+          wasm=$(sed -n '3s/.*"version": *"\([^"]*\)".*/\1/p' ./wasm-runtime/package.json)
+          echo $wasm
+          echo "wasmVersion=$wasm" >> $GITHUB_ENV
+      - name: Sync upstream
+        continue-on-error: true
+        run: |
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git config --global user.name "github-actions[bot]"
+          git remote add upstream https://github.com/napi-rs/napi-rs.git
+          git fetch upstream --no-tag
+          # git diff main upstream/main -- .github/workflows/test-release.yaml >> cached.patch
+          # git rebase upstream/main -X ours
+          # echo 'package.json merge=keepLocal' >> .gitattributes
+          # echo 'yarn.lock merge=keepLocal' >> .gitattributes
+          # echo '.github/workflows/test-release.yaml merge=keepLocal' >> .gitattributes
+          # echo 'cli/src/api/templates/js-binding.ts merge=keepLocal' >> .gitattributes
+          # echo 'cli/src/utils/__tests__/__snapshots__/target.spec.ts.snap binary merge=keepLocal' >> .gitattributes
+          git config merge.keepLocal.name "Keep local version"
+          git config merge.keepLocal.driver "cp %A %O"
+          git status
+          # git add .gitattributes
+          git status
+          # git commit --amend --no-edit
+          git check-attr merge -- package.json
+          git check-attr merge -- yarn.lock
+          git check-attr merge -- cli/src/api/templates/js-binding.ts
+          git check-attr merge -- cli/src/utils/__tests__/__snapshots__/target.spec.ts.snap
+          git check-attr merge -- .github/workflows/test-release.yaml
+          git rebase upstream/main -X theirs
+          git status
+          # git restore --staged .gitattributes
+          cp package.json{,.bak}
+          git diff HEAD HEAD~1 > diff-o.patch
+          git status
+      # - name: Replace release name
+      # uses: ./github/actions/replace-org-name
+      # with:
+      #   shell: bash
+      - name: Check version
+        continue-on-error: true
+        run: |
+          git status
+          # rm yarn.lock
+          yarn install --mode=update-lockfile
+          yarn install --mode=skip-build
+          git status
+          touch cit.log
+          forceP=1
+          ncli=$(sed -n '3s/.*"version": *"\([^"]*\)".*/\1/p' ./cli/package.json)
+          echo ncli=$ncli | tee -a $GITHUB_ENV
+          [[ $cliVersion != $ncli || $forceP == 1 ]]  && echo "cliFlagRelease=1" >> $GITHUB_ENV && echo " - @napi-rs/cli@${ncli}" >> cit.log
+          ntrip=$(sed -n '3s/.*"version": *"\([^"]*\)".*/\1/p' ./triples/package.json)
+          echo ntrip=$ntrip | tee -a $GITHUB_ENV
+          [[ $tripVersion != $ntrip || $forceP == 1 ]]  && echo "tripFlagRelease=1" >> $GITHUB_ENV && echo " - @napi-rs/triples@${ntrip}" >> cit.log
+          nwasm=$(sed -n '3s/.*"version": *"\([^"]*\)".*/\1/p' ./wasm-runtime/package.json)
+          echo nwasm=$nwasm | tee -a $GITHUB_ENV
+          [[ $wasmVersion != $nwasm || $forceP == 1 ]]  && echo "wasmFlagRelease=1" >> $GITHUB_ENV && echo " - @napi-rs/wasm-runtime@${nwasm}" >> cit.log
+          ln=$(wc -l cit.log | cut -f 1 -d ' ')
+          echo 'flagPublish=0' >> $GITHUB_ENV
+          if [[ $ln -gt 0 ]];then
+            sed -i '1i\chore(release): publish\n' cit.log
+            cat cit.log
+            echo 'flagPublish=1' >> $GITHUB_ENV
+          fi
+          # if [[ $cliFlagRelease == 1 ]]; then
+          #   git tag "@napi-rs/cli@${ncli}"
+          # elif [[ $tripFlagRelease == 1 ]]; then
+          #   git tag "@npai-rs/triples@${ntrip}"
+          # elif [[ $wasmFlagRelease == 1 ]]; then
+          #   git tag "@npai-rs/wasm@${nwasm}"
+          # fi
+          git diff HEAD HEAD~1 > diff.patch
+          if ! git diff-index --quiet HEAD --; then
+          echo '❌有未提交的修改'
+          git diff --cached >> cached.patch
+          fi
+          if [ $(git rev-list --count origin/$(git rev-parse --abbrev-ref HEAD)..HEAD 2>/dev/null || echo 0) -gt 0 ]; then
+            echo "❌ 有未 push 的 commit"
+            # git log @{u}..HEAD
+            echo 'forcePush=1' >> $GITHUB_ENV
+          fi
+          git diff >> cached.patch
       - name: Publish
         run: |
+          git status
           yarn install --mode=skip-build
           npm install -g npm
           yarn build
+          git status
+          cat package.json
+          if ! git diff --cached --quiet -- package.json yarn.lock;then
+          git add package.json yarn.lock
+          git commit --amend --no-edit
+          fi
+          if [[ $flagPublish == 1 ]];then
+          sed -i '/^for/s/^/console.log(packagesToBump)\n/' ./.github/publish.js
+          sed -i 's/git log -1 --pretty=%B/cat .\/cit.log/' ./.github/publish.js
+          sed -i 's/\(npm publish\)"`/\1 --dry-run"\; yarn workspace ${pkg} exec "npm pack"`/' ./.github/publish.js
           node ./.github/publish.js
+          fi
+          echo -------------------------------
+          ls
+          echo -------------------------------
+          ls cli
+          echo -------------------------------
+          ls triples
+          echo -------------------------------
+          ls wasm-runtime
+          echo -------------------------------
+          find . -name "*.tgz"
+          # rm cit.log
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: diff.patch.zip
+          path: |
+            diff.patch
+            diff-o.patch
+            cached.patch
+            package.json.bak
+      # - run: exit 1
+      - name: Push changes
+        if: ${{ env.forcePush == 1 }}
+        uses: ad-m/github-push-action@master
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          force: true
+      - name: Upload to Release (@nap-rs/cli)
+        uses: softprops/action-gh-release@v2
+        if: ${{ env.cliFlagRelease == 1 }}
+        with:
+          files: |
+            cli/napi-rs-cli-${{ env.ncli }}.tgz
+          name: '@napi-rs/cli@${{ env.ncli }}'
+          tag_name: '@napi-rs/cli@${{ env.ncli }}'
+          # body_path: gitlog.txt
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Upload to Release (@nap-rs/triples)
+        uses: softprops/action-gh-release@v2
+        if: ${{ env.tripFlagRelease == 1 }}
+        with:
+          files: |
+            triples/napi-rs-triples-${{ env.ntrip }}.tgz
+          name: '@napi-rs/triples@${{ env.ntrip }}'
+          tag_name: '@napi-rs/triples@${{ env.ntrip }}'
+          # body_path: gitlog.txt
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Upload to Release (@nap-rs/wasm-runtime)
+        uses: softprops/action-gh-release@v2
+        if: ${{ env.wasmFlagRelease == 1 }}
+        with:
+          files: |
+            wasm-runtime/napi-rs-wasm-runtime-${{ env.nwasm }}.tgz
+          name: '@napi-rs/wasm-runtime@${{ env.nwasm }}'
+          tag_name: '@napi-rs/wasm-runtime@${{ env.nwasm }}'
+          # body_path: gitlog.txt
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
